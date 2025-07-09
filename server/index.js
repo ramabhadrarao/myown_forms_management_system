@@ -12,11 +12,18 @@ import adminRoutes from './routes/admin.js';
 import formsRoutes from './routes/forms.js';
 import responsesRoutes from './routes/responses.js';
 import usersRoutes from './routes/users.js';
+import quizzesRoutes from './routes/quizzes.js';
 
 // Import utilities
 import { createDefaultAdmin } from './utils/createAdmin.js';
 
 dotenv.config();
+
+// Ensure JWT_SECRET is available
+if (!process.env.JWT_SECRET) {
+  process.env.JWT_SECRET = 'development_jwt_secret_key_12345_make_this_random_in_production';
+  console.log('Using fallback JWT_SECRET for development');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -41,6 +48,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/forms', formsRoutes);
 app.use('/api/responses', responsesRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/quizzes', quizzesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

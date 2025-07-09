@@ -6,6 +6,9 @@ import { Dashboard } from './components/Dashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { FormBuilder } from './components/FormBuilder';
 import { FormView } from './components/FormView';
+import { FormResponses } from './components/FormResponses';
+import { QuizBuilder } from './components/QuizBuilder';
+import { QuizTaker } from './components/QuizTaker';
 import { PublicForms } from './components/PublicForms';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { Navigation } from './components/Navigation';
@@ -37,7 +40,38 @@ function App() {
 
   useEffect(() => {
     checkAuthStatus();
+    handleRouting();
+    
+    // Listen for hash changes
+    const handleHashChange = () => {
+      handleRouting();
+    };
+    
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  const handleRouting = () => {
+    const hash = window.location.hash;
+    console.log('Current hash:', hash);
+    
+    if (hash.startsWith('#/form/')) {
+      const formId = hash.split('/')[2];
+      if (formId) {
+        setCurrentView(`form-view:${formId}`);
+      }
+    } else if (hash.startsWith('#/quiz/')) {
+      const quizId = hash.split('/')[2];
+      if (quizId) {
+        setCurrentView(`quiz-take:${quizId}`);
+      }
+    } else if (hash.startsWith('#/responses/')) {
+      const formId = hash.split('/')[2];
+      if (formId) {
+        setCurrentView(`form-responses:${formId}`);
+      }
+    }
+  };
 
   const checkAuthStatus = async () => {
     try {
@@ -46,21 +80,29 @@ function App() {
         const response = await axios.get('/auth/me');
         setUser(response.data.user);
         
-        // Determine initial view based on user status
-        if (response.data.user.role === 'admin') {
-          setCurrentView('admin');
-        } else if (response.data.user.isApproved) {
-          setCurrentView('dashboard');
-        } else {
-          setCurrentView('waiting-approval');
+        // Only set view if not already set by routing
+        if (!window.location.hash) {
+          if (response.data.user.role === 'admin') {
+            setCurrentView('admin');
+          } else if (response.data.user.isApproved) {
+            setCurrentView('dashboard');
+          } else {
+            setCurrentView('waiting-approval');
+          }
         }
       } else {
-        setCurrentView('public');
+        // Only set view if not already set by routing
+        if (!window.location.hash) {
+          setCurrentView('public');
+        }
       }
     } catch (error) {
       console.error('Auth check failed:', error);
       localStorage.removeItem('token');
-      setCurrentView('public');
+      // Only set view if not already set by routing
+      if (!window.location.hash) {
+        setCurrentView('public');
+      }
     } finally {
       setLoading(false);
     }
@@ -73,6 +115,9 @@ function App() {
       
       localStorage.setItem('token', token);
       setUser(user);
+      
+      // Clear hash and redirect to appropriate dashboard
+      window.location.hash = '';
       
       if (user.role === 'admin') {
         setCurrentView('admin');
@@ -98,7 +143,31 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     setUser(null);
+    window.location.hash = '';
     setCurrentView('public');
+  };
+
+  const handleViewChange = (view: string) => {
+    // Clear hash when navigating to non-form/response/quiz views
+    if (!view.startsWith('form-view:') && !view.startsWith('form-responses:') && !view.startsWith('quiz-take:')) {
+      window.location.hash = '';
+    }
+    setCurrentView(view);
+  };
+
+  const handleBackFromForm = () => {
+    window.location.hash = '';
+    setCurrentView(user ? 'dashboard' : 'public');
+  };
+
+  const handleBackFromResponses = () => {
+    window.location.hash = '';
+    setCurrentView('dashboard');
+  };
+
+  const handleBackFromQuiz = () => {
+    window.location.hash = '';
+    setCurrentView(user ? 'dashboard' : 'public');
   };
 
   if (loading) {
@@ -115,7 +184,7 @@ function App() {
         <Navigation 
           user={user} 
           currentView={currentView} 
-          onViewChange={setCurrentView}
+          onViewChange={handleViewChange}
           onLogout={handleLogout}
         />
       )}
@@ -187,7 +256,7 @@ function App() {
         {currentView === 'dashboard' && user && (
           <Dashboard 
             user={user} 
-            onViewChange={setCurrentView}
+            onViewChange={handleViewChange}
           />
         )}
         
@@ -198,14 +267,35 @@ function App() {
         {currentView === 'form-builder' && user && (
           <FormBuilder 
             user={user} 
-            onBack={() => setCurrentView('dashboard')}
+            onBack={() => handleViewChange('dashboard')}
+          />
+        )}
+
+        {currentView === 'quiz-builder' && user && (
+          <QuizBuilder 
+            user={user} 
+            onBack={() => handleViewChange('dashboard')}
           />
         )}
         
         {currentView.startsWith('form-view:') && (
           <FormView 
             formId={currentView.split(':')[1]} 
-            onBack={() => setCurrentView(user ? 'dashboard' : 'public')}
+            onBack={handleBackFromForm}
+          />
+        )}
+
+        {currentView.startsWith('quiz-take:') && (
+          <QuizTaker 
+            quizId={currentView.split(':')[1]} 
+            onBack={handleBackFromQuiz}
+          />
+        )}
+
+        {currentView.startsWith('form-responses:') && user && (
+          <FormResponses 
+            formId={currentView.split(':')[1]} 
+            onBack={handleBackFromResponses}
           />
         )}
       </main>

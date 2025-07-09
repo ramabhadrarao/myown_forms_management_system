@@ -46,6 +46,10 @@ export function PublicForms({ onSwitchToLogin }: PublicFormsProps) {
     }
   };
 
+  const handleViewForm = (formId: string) => {
+    window.location.hash = `#/form/${formId}`;
+  };
+
   const filteredForms = forms.filter(form =>
     form.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     form.description?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -176,7 +180,7 @@ export function PublicForms({ onSwitchToLogin }: PublicFormsProps) {
                     by {form.createdBy.name}
                   </div>
                   <button
-                    onClick={() => window.location.hash = `#/form/${form._id}`}
+                    onClick={() => handleViewForm(form._id)}
                     className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     <Eye className="w-4 h-4" />
